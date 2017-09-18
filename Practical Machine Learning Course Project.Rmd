@@ -1,0 +1,63 @@
+---
+title: "Practical Machine Learning Course Project"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(cache = TRUE)
+```
+
+## Synopsis
+
+The goal of this project is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants and see how well they subject perform specific activities. There are five classifications of this exercise, one method is the correct form of the exercise while the other four are common mistakes: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+
+## Data Cleansing
+
+```{r, echo=FALSE}
+library(caret)
+library(randomForest)
+#Load Data Files
+training <- read.csv("c:/r/practicalmachinelearning/pml-training.csv")
+testing <- read.csv("c:/r/practicalmachinelearning/pml-testing.csv")
+#if columns are all na in testing set remove column from both training and testing
+cols <- colnames(testing[colSums(is.na(testing)) > 0])
+#add other unecessary columns
+cols <- c(cols,"problem_id","X","user_name","raw_timestamp_part_1","raw_timestamp_part_2"
+          ,"cvtd_timestamp","new_window","num_window")
+#remove columns
+training <- training[, !(names(training) %in% cols)]
+testing <- testing[, !(names(testing) %in% cols)]
+```
+
+## Cross Validation
+```{r}
+#Separate training data for cross validation
+inTrain <- createDataPartition(y=training$classe,p=0.8, list=FALSE)
+trainData <- training[inTrain,]
+validationData <- training[-inTrain,]
+```
+
+# Create Models
+```{r}
+#Create random forest model and get accuracy
+rfmodel <- randomForest(classe~.,data=trainData,mtry= 5,nodesize=5)
+rfpredict <- predict(rfmodel,validationData)
+confusionMatrix(rfpredict,validationData$classe)$overall[1]
+
+#Create boosted model and get accuracy
+gbmmodel <- train(classe~.,data = trainData, method = "gbm", verbose = FALSE)
+gbmpredict <- predict(gbmmodel,validationData)
+confusionMatrix(gbmpredict,validationData$classe)$overall[1]
+```
+
+## Model Selection
+The random forest model has a 99% accuracy vs 96% for the boosted model.
+The out of sample error for the random forest was .3%
+The out of sample error for the gbm was 3.3%
+The random forest model was selected to run the prediction on the test data
+
+## Predicting Results
+```{r}
+predict(rfmodel,testing)
+```
